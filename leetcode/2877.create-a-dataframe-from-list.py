@@ -19,7 +19,7 @@ print(createDataframe(data))  # Output:
 
 # Time complexity: O(n)
 
-# How to create virtual environment on osx
+# Create virtual environment on osx
 # python3 -m venv env
 # source env/bin/activate
 
