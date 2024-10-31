@@ -20,8 +20,9 @@ class Solution:
                 # Assign the element to the index
                 nums[index] = element
         # Return num of unique elements
-        return nums[:index + 1]
+        # return nums[:index + 1]
+        return index+1
 
-p = Solution()
+# p = Solution()
 # print(p.removeDuplicates([1, 1, 2]))  # Output: [1, 2]
-print(p.removeDuplicates([0, 0, 1, 1, 1, 2, 2, 3, 3, 4]))  # Output: [0, 1, 2, 3, 4]
+# # print(p.removeDuplicates([0, 0, 1, 1, 1, 2, 2, 3, 3, 4]))  # Output: [0, 1, 2, 3, 4]
