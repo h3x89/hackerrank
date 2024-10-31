@@ -20,7 +20,11 @@ from typing import List
 class Solution:
     def removeDuplicates(self, nums: List[int]) -> int:
         for i in range(len(nums)-1, 1, -1): # Start from the end of the list
-            if nums[i] == nums[i-1] == nums[i-2]: # If the current element is equal to the previous two elements
+            current = nums[i]
+            previous = nums[i-1]
+            previous_previous = nums[i-2]
+
+            if current == previous == previous_previous: # If the current element is equal to the previous element and the element before the previous element
                 nums.pop(i) # Remove the current element
         print(nums)
         return len(nums)
