@@ -15,6 +15,12 @@ async def task(number):
     print(f"Task {number} completed after {sleep_time:.2f} seconds")
     return number, sleep_time
 
+# Asynchronous function that simulates downloading a file
+async def download_file(file_name):
+    print(f"Start downloading {file_name}...")
+    await asyncio.sleep(random.randint(1, 3))  # Simulates download time (1-3 seconds)
+    print(f"Finished downloading {file_name}!")
+
 # Main function that runs 10 asynchronous tasks concurrently
 async def main():
     # Create a list of tasks with unique numbers from 1 to 10
@@ -27,6 +33,12 @@ async def main():
     print("\nSummary of results:")
     for number, sleep_time in results:
         print(f"Task {number} completed after {sleep_time:.2f} seconds")
+
+    print("\n\nSecond example:")
+    # Second example 
+    files = ["file1.txt", "file2.txt", "file3.txt"]
+    tasks = [download_file(file) for file in files]  # Create a list of tasks
+    await asyncio.gather(*tasks)  # Execute all tasks concurrently
 
 # Run the main function
 asyncio.run(main())
