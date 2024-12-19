@@ -13,10 +13,14 @@
 def solution(numbers):
     result = []
     for number in numbers:
-        # Convert number to string, reverse the order of digits and convert back to int
+        # Detailed explanation of number reversal using [::-1]:
         # 1. str(number) - converts number to string, e.g. 123 -> "123"
-        # 2. [::-1] - reverses the string, e.g. "123" -> "321"
-        # 3. int() - converts string back to number, e.g. "321" -> 321
+        # 2. [::-1] - uses slice notation [start:stop:step] to reverse the string:
+        #    - first ':' means no specified start (defaults to 0)
+        #    - second ':' means no specified end (defaults to string length)
+        #    - '-1' as step means we go from end to beginning
+        #    Example: "123"[::-1] -> "321"
+        # 3. int() - converts reversed string back to number, e.g. "321" -> 321
         reverse = int(str(number)[::-1])
         if reverse in numbers:
             result.append((number, reverse))
