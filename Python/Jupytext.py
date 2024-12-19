@@ -9,6 +9,7 @@ print(x - y)
 # %%
 
 text = "Hello!"
+# print(dupa)
 
 def greet(var: str):
     return(var)
@@ -16,6 +17,7 @@ def greet(var: str):
 
 
 var1 = greet(text + "1")  # <-- Debugger is here
+breakpoint()
 var2 = greet(text + "2")  # <-- Debugger is here
 
 
