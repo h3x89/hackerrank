@@ -21,4 +21,12 @@
 
 # time_period_length("12:15:30 - 14:00:00")  # should return 105
 
+def time_period_length(time_period):
+    start_time, end_time = time_period.split(' - ')
+    start_hours, start_minutes, start_seconds = map(int, start_time.split(':'))
+    end_hours, end_minutes, end_seconds = map(int, end_time.split(':'))
+    
+    total_minutes = (end_hours - start_hours) * 60 + (end_minutes - start_minutes) + (end_seconds - start_seconds) // 60
+    return total_minutes
 
+print(time_period_length("12:15:30 - 14:00:00"))  # should return 105
