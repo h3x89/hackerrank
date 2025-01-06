@@ -26,3 +26,17 @@
 # Example
 
 # For date = '1999-01-01' and n = 365, the output should be '2000-01-01'.
+
+from datetime import datetime, timedelta
+
+def add_days(date, n):
+    # Parse the input date string into a datetime object
+    date_obj = datetime.strptime(date, '%Y-%m-%d')
+    
+    # Add the specified number of days to the date
+    new_date = date_obj + timedelta(days=n)
+    
+    # Format the new date back into the YYYY-MM-DD format
+    return new_date.strftime('%Y-%m-%d')
+
+print(add_days('1999-01-01', 365))
