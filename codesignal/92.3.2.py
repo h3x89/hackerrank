@@ -29,16 +29,42 @@ def time_period_length(time_period):
     start_hours, start_minutes, start_seconds = map(int, start_time.split(':'))
     end_hours, end_minutes, end_seconds = map(int, end_time.split(':'))
 
-    # Convert the start and end times to total seconds
-    start_total_seconds = start_hours * 3600 + start_minutes * 60 + start_seconds
-    end_total_seconds = end_hours * 3600 + end_minutes * 60 + end_seconds
+    # Convert the start and end times to total minutes without seconds
+    start_total_minutes = start_hours * 60 + start_minutes
+    end_total_minutes = end_hours * 60 + end_minutes
 
     # Check if the start time is greater than the end time
-    if start_total_seconds > end_total_seconds:
-        end_total_seconds += 86400  # Add 24 hours to the end time
+    if start_total_minutes > end_total_minutes:
+        end_total_minutes += 1440  # Add 24 hours to the end time
 
     # Calculate the total minutes between the start and end times
-    total_minutes = (end_total_seconds - start_total_seconds) // 60
+    total_minutes = end_total_minutes - start_total_minutes
     return total_minutes
 
 print(time_period_length("12:15:30 - 14:00:00"))  
+
+import unittest
+class SolutionTests(unittest.TestCase):
+    def test1(self):
+        self.assertEqual(time_period_length("00:00:00 - 00:00:01"), 0)
+
+    def test2(self):
+        self.assertEqual(time_period_length("00:00:00 - 00:01:00"), 1)
+
+    def test3(self):
+        self.assertEqual(time_period_length("00:59:59 - 01:00:00"), 1)
+
+    def test4(self):
+        self.assertEqual(time_period_length("00:00:00 - 23:59:59"), 1439)
+
+    def test5(self):
+        self.assertEqual(time_period_length("01:05:05 - 16:30:50"), 925)
+
+    def test6(self):
+        self.assertEqual(time_period_length("12:15:30 - 14:00:00"), 105)
+
+    def test7(self):
+        self.assertEqual(time_period_length("02:45:20 - 06:37:35"), 232)
+
+if __name__ == '__main__':
+    unittest.main()
