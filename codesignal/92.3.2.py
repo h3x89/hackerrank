@@ -22,11 +22,23 @@
 # time_period_length("12:15:30 - 14:00:00")  # should return 105
 
 def time_period_length(time_period):
+    # Split the time period into start and end times
     start_time, end_time = time_period.split(' - ')
+
+    # Split the start and end times into hours, minutes, and seconds
     start_hours, start_minutes, start_seconds = map(int, start_time.split(':'))
     end_hours, end_minutes, end_seconds = map(int, end_time.split(':'))
-    
-    total_minutes = (end_hours - start_hours) * 60 + (end_minutes - start_minutes) + (end_seconds - start_seconds) // 60
+
+    # Convert the start and end times to total seconds
+    start_total_seconds = start_hours * 3600 + start_minutes * 60 + start_seconds
+    end_total_seconds = end_hours * 3600 + end_minutes * 60 + end_seconds
+
+    # Check if the start time is greater than the end time
+    if start_total_seconds > end_total_seconds:
+        end_total_seconds += 86400  # Add 24 hours to the end time
+
+    # Calculate the total minutes between the start and end times
+    total_minutes = (end_total_seconds - start_total_seconds) // 60
     return total_minutes
 
-print(time_period_length("12:15:30 - 14:00:00"))  # should return 105
+print(time_period_length("12:15:30 - 14:00:00"))  
