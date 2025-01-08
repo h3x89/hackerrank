@@ -22,11 +22,24 @@ def solution(sentences, words):
     for i in range(len(sentences)):
         sentence = sentences[i]
         word = words[i]
-        if word.lower() in sentence.lower():
-            start_idx = sentence.lower().index(word.lower())
-            end_idx = start_idx + len(word)
-            sentence = sentence[:start_idx] + sentence[start_idx:end_idx][::-1] + sentence[end_idx:]
-        res.append(sentence)
+        
+        # Find all occurrences of the word (case-insensitive)
+        import re
+        pattern = re.compile(r'\b' + re.escape(word) + r'\b', re.IGNORECASE)
+        
+        def replace_func(match):
+            matched_word = match.group(0)
+            reversed_word = word[::-1]
+            # Preserve case of first letter
+            if matched_word[0].isupper():
+                reversed_word = reversed_word.capitalize()
+            else:
+                reversed_word = reversed_word.lower()
+            return reversed_word
+            
+        new_sentence = pattern.sub(replace_func, sentence)
+        res.append(new_sentence)
+    
     return res
 
 print(solution(['this is a simple example.', 'the name is bond. james bond.', 'remove every single e'], ['simple', 'bond', 'e'])) # ['this is a elpmis example.', 'the name is dnob. james dnob.', 'remove every single e']
