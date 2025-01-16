@@ -9,3 +9,13 @@
 # For instance, if the input sentence is "Coding tasks are fun and required", the output string should be "tssaefnad", which, when reversed, becomes "danfeasst". The words "tasks", "are", "fun", and "and" are selected since they have an odd number of characters, and the characters 't', 's', 's', 'a', 'e', 'f', 'n', 'a', 'd' at even indexes are chosen and then reversed in the final string. Do not forget that Python indexing begins at 0, so 't' in "tasks" is considered to be at an even index. Single-character words must also be taken into consideration for this task.
 
 # Are you ready to accept the challenge and create a solution that efficiently accomplishes this task step by step?
+
+def solution(sentence):
+    result = []
+    for word in sentence.split():
+        if len(word) % 2 == 1:
+            for i in range(0, len(word), 2):
+                result.append(word[i])
+    return ''.join(result)[::-1]
+
+print(solution("Coding tasks are fun and required")) # "danfeasst"
