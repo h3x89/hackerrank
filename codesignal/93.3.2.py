@@ -41,3 +41,25 @@
 
 # At the end of the game, the player is at position 4 having made a total of 5 moves, thereby, the function returns (4, 5).
 
+def evaluatePath(numbers):
+    position = 0
+    moves = 0
+    direction = 1
+    reversed = False
+    
+    while 0 <= position < len(numbers) and numbers[position] != 0:
+        next_pos = position + numbers[position] * direction
+        
+        if next_pos < 0 or next_pos >= len(numbers):
+            if reversed:
+                return (position, moves)
+            direction *= -1
+            reversed = True
+            continue
+            
+        position = next_pos
+        moves += 1
+        
+    return (position, moves)
+
+print(evaluatePath([3, 4, 1, 1, -3, 1])) # (4, 5)
