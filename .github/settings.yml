@@ -15,6 +15,10 @@ repository:
 
   description: HackerRank solutions
 
+  homepage: https://github.com/h3x89/hackerrank
+
+  topics: hackerrank, solutions
+
   private: false
 
   security_and_analysis:
