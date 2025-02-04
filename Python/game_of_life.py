@@ -1,3 +1,4 @@
+import secrets
 # This Python program simulates Conway’s Game of Life on a 20x20 grid (using a 2D list or array). Each cell can exist in one of two states: “alive” or “dead.” The initial state of the grid is randomly generated, with each cell having a 50% chance of being alive.
 
 # The program operates by applying the following rules to each cell at every generation:
@@ -69,7 +70,7 @@ def introduce_random_life(grid, probability=0.05):
     """Introduce random new life to the grid with a given probability."""
     for x in range(HEIGHT):
         for y in range(WIDTH):
-            if random.random() < probability:
+            if secrets.randbelow(100) / 100 < probability:
                 grid[x][y] = 1
 
 try:
