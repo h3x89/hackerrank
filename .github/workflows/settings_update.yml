@@ -1,0 +1,37 @@
+name: Update repository settings
+
+on:
+  schedule:
+    - cron: "15 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  update-settings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Make script executable
+        run: |
+          chmod +x .github/update-settings.sh
+          ls -la .github/update-settings.sh
+
+      - name: Run probot-settings
+        run: .github/update-settings.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_SETTINGS_TOKEN }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+
+# Example output for private repository:
+# Running probot settings
+# ERROR (event): Upgrade to GitHub Pro or make this repository public to enable this feature. - https://docs.github.com/rest/branches/branch-protection#update-branch-protection
+
+# Repo required package.json file
