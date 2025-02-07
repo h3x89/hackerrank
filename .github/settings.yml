@@ -10,7 +10,6 @@
 _extends: h3x89/github-settings:.github/settings.yml
 
 repository:
-
   name: hackerrank
 
   description: HackerRank solutions
@@ -22,15 +21,14 @@ repository:
   private: false
 
   security_and_analysis:
-    advanced_security:
-      status: enabled
+    # advanced_security: # ERROR (event): Advanced security is always available for public repos. - https://docs.github.com/rest/repos/repos#update-a-repository
+    #   status: enabled
     secret_scanning:
       status: enabled
     secret_scanning_push_protection:
       status: enabled
 
-  # test 
-
+  # test
 # branches:
 #   - name: main
 #     protection:
