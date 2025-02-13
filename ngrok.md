@@ -2,6 +2,12 @@
 
 <https://www.youtube.com/shorts/zH-SmoD3_NQ>
 
+Ollama settings:
+
+```bash
+launchctl setenv OLLAMA_HOST "0.0.0.0:11434"
+```
+
 ```bash
 ngrok http 11434 --host-header="localhost:11434"
 ```
