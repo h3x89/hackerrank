@@ -30,12 +30,6 @@ chmod +x toggle_whisper.sh
 
 2. Copy script content to toggle_whisper.sh file
 
-3. Move script to convenient location:
-
-~~~bash
-mv toggle_whisper.sh ~/bin/
-~~~
-
 ## macOS Integration
 
 1. Open Automator application
@@ -48,10 +42,6 @@ mv toggle_whisper.sh ~/bin/
 3. Add "Run Shell Script" action:
    - Drag "Run Shell Script" action from library
    - In script field enter full path to script:
-
-~~~bash
-~/bin/toggle_whisper.sh
-~~~
 
 4. Save Quick Action with a name (e.g., "Toggle Whisper")
 

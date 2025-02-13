@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# Required parameters:
+# @raycast.schemaVersion 1
+# @raycast.title Toggle whisper
+# @raycast.mode fullOutput
+
+# Optional parameters:
+# @raycast.icon 🤖
+
+# Documentation:
+# @raycast.author robert_kubis
+# @raycast.authorURL https://raycast.com/robert_kubis
+#!/bin/bash
+
 # toggle_whisper.sh
 # Script for toggling audio recording and transcription using OpenAI Whisper
 # Requirements:
@@ -13,11 +26,54 @@ LOCKFILE="/tmp/whisper_recording.pid"
 AUDIOFILE="/tmp/whisper_input.wav"
 TRANSCRIPT="/tmp/whisper_output.txt"
 
-# Function for displaying messages and notifications
+# Icons for notifications (emoji as icons)
+ICON_RECORD="🎤"
+ICON_STOP="⏹"
+ICON_SUCCESS="✓"
+ICON_ERROR="⚠️"
+ICON_PROCESSING="⚡"
+
+# Function for displaying advanced notifications
 show_notification() {
     local message="$1"
-    echo "[Whisper Toggle] $message"
-    osascript -e "display notification \"$message\" with title \"Whisper Toggle\""
+    local title="Whisper Toggle"
+    local sound="${2:-Ping}"
+    
+    # Wyświetl w konsoli
+    echo "[$title] $message"
+    
+    # Użyj prostego formatu powiadomień
+    osascript -e "display notification \"$message\" with title \"$title\" sound name \"$sound\""
+}
+
+# Function for displaying menu bar icon (requires terminal-notifier)
+show_menubar_notification() {
+    local message="$1"
+    local icon="${2:-$ICON_PROCESSING}"
+    
+    if command -v terminal-notifier >/dev/null 2>&1; then
+        terminal-notifier \
+            -title "Whisper Toggle" \
+            -message "$icon $message" \
+            -activate "com.apple.Terminal" \
+            -sound "Ping"
+    else
+        show_notification "$message" "$ICON_PROCESSING"
+    fi
+}
+
+# Function for displaying progress bar in notification
+show_progress_notification() {
+    local current="$1"
+    local total="$2"
+    local message="$3"
+    local progress=$((current * 100 / total))
+    
+    local bar=""
+    for ((i=0; i<progress/10; i++)); do bar+="●"; done
+    for ((i=progress/10; i<10; i++)); do bar+="○"; done
+    
+    show_notification "$message ($progress%) $bar"
 }
 
 # Function for cleaning temporary files
@@ -44,9 +100,9 @@ show_progress() {
 
 # Function for checking and installing requirements
 check_requirements() {
-    for cmd in ffmpeg whisper osascript pbcopy; do
+    for cmd in ffmpeg whisper osascript pbcopy terminal-notifier; do
         if ! command -v $cmd >/dev/null 2>&1; then
-            show_notification "Installing missing tool: $cmd"
+            show_notification "Installing missing tool: $cmd" "$ICON_PROCESSING"
             case $cmd in
                 ffmpeg)
                     brew install ffmpeg
@@ -54,8 +110,11 @@ check_requirements() {
                 whisper)
                     pip3 install -U openai-whisper
                     ;;
+                terminal-notifier)
+                    brew install terminal-notifier
+                    ;;
                 osascript|pbcopy)
-                    show_notification "Error: Missing system tool: $cmd"
+                    show_notification "Error: Missing system tool: $cmd" "$ICON_ERROR"
                     exit 1
                     ;;
             esac
@@ -64,12 +123,13 @@ check_requirements() {
 }
 
 # Check requirements
-check_requirements
+# check_requirements
 
 # Main script logic
 if [ ! -f "$LOCKFILE" ]; then
     # Start recording
-    show_notification "Starting recording..."
+    show_notification "🎤 Recording started..." "Glass"
+    show_menubar_notification "Recording in progress..." "$ICON_RECORD"
     
     # Start recording in background with better quality
     ffmpeg -f avfoundation -i ":0" -ar 16000 -ac 1 "$AUDIOFILE" -y >/dev/null 2>&1 &
@@ -79,8 +139,9 @@ if [ ! -f "$LOCKFILE" ]; then
     show_notification "Recording started. Run script again to stop."
 else
     # Stop recording
-    show_notification "Stopping recording..."
-    
+    show_notification "⏹️ Recording stopped..." "Bottle"
+    show_menubar_notification "Recording stopped..." "$ICON_STOP"
+
     # Get and terminate recording process
     PID=$(cat "$LOCKFILE")
     kill "$PID" 2>/dev/null
@@ -88,13 +149,14 @@ else
     
     # Wait for ffmpeg to close file and show progress
     for i in {1..3}; do
-        show_progress "Finalizing recording... ($i/3)"
+        show_progress_notification "$i" "3" "Finalizing recording..."
         sleep 1
     done
     echo # New line after progress bar
     
     if [ ! -f "$AUDIOFILE" ]; then
-        show_notification "Error: Audio file not found!"
+        show_notification "Error: Audio file not found!" "$ICON_ERROR" "Basso"
+        show_menubar_notification "Error: Audio file not found!" "$ICON_ERROR"
         cleanup
         exit 1
     fi
@@ -103,7 +165,7 @@ else
     show_file_info "$AUDIOFILE"
     
     # Start transcription
-    show_notification "Starting transcription..."
+    show_notification "Starting transcription..." "$ICON_PROCESSING"
     
     # Call Whisper with specified parameters and progress display
     echo "[Whisper Toggle] Processing transcription..."
@@ -125,7 +187,8 @@ else
         --output_dir /tmp \
         2>&1 | tee "$WHISPER_LOG"; then
         
-        show_notification "Error: Problem occurred during transcription!"
+        show_notification "Error: Problem occurred during transcription!" "$ICON_ERROR" "Basso"
+        show_menubar_notification "Error: Transcription failed!" "$ICON_ERROR"
         echo "Whisper log:"
         cat "$WHISPER_LOG"
         cleanup
@@ -137,7 +200,7 @@ else
         if [[ $line == *"Detected language:"* ]] || 
            [[ $line == *"Transcribing"* ]] || 
            [[ $line == *"Loading"* ]]; then
-            show_notification "$line"
+            show_notification "$line" "$ICON_PROCESSING"
         fi
     done < "$WHISPER_LOG"
     
@@ -147,9 +210,9 @@ else
     # Check transcription result (now looking in /tmp)
     WHISPER_OUTPUT="/tmp/whisper_input.txt"
     if [ ! -f "$WHISPER_OUTPUT" ]; then
-        show_notification "Error: Transcription failed!"
+        show_notification "Error: Transcription failed!" "$ICON_ERROR" "Basso"
+        show_menubar_notification "Error: No output file found!" "$ICON_ERROR"
         echo "Missing output file: $WHISPER_OUTPUT"
-        # Show directory contents for debugging
         echo "Contents of /tmp:"
         ls -l /tmp/whisper*
         cleanup
@@ -165,9 +228,11 @@ else
     
     # Copy transcription to clipboard
     if cat "$TRANSCRIPT" | pbcopy; then
-        show_notification "Transcription complete. Text has been copied to clipboard."
+        show_notification "✅ Transcription complete and copied to clipboard!" "Hero"
+        show_menubar_notification "Transcription complete and copied to clipboard!" "$ICON_SUCCESS"
     else
-        show_notification "Error: Failed to copy text to clipboard!"
+        show_notification "⚠️ Failed to copy text to clipboard!" "Basso"
+        show_menubar_notification "Error: Failed to copy to clipboard!" "$ICON_ERROR"
     fi
     
     # Cleanup
