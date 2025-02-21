@@ -2,8 +2,9 @@
 
 # Required parameters:
 # @raycast.schemaVersion 1
-# @raycast.title Whisper Transcription
+# @raycast.title Whisper Transcription sh
 # @raycast.mode fullOutput
+
 
 # Optional parameters:
 # @raycast.icon 🎤
@@ -17,12 +18,15 @@
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+echo "Script directory: $SCRIPT_DIR"
 
 # Activate virtual environment
+echo "Activating virtual environment..."
 source "${SCRIPT_DIR}/venv/bin/activate"
 
 # Default model size if not specified
 MODEL_SIZE=${1:-"small"}
+echo "Using model size: $MODEL_SIZE"
 
 # Validate model size
 case $MODEL_SIZE in
@@ -35,7 +39,9 @@ case $MODEL_SIZE in
 esac
 
 # Run the Python script
-python3 "${SCRIPT_DIR}/whisper_realtime.py" --model "$MODEL_SIZE"
+echo "Running Python script..."
+python3 "${SCRIPT_DIR}/whisper_realtime.py" --model "$MODEL_SIZE" --auto-detect
 
 # Deactivate virtual environment
-deactivate 
+echo "Deactivating virtual environment..."
+deactivate

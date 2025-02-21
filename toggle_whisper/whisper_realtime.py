@@ -22,9 +22,20 @@ import numpy as np
 import pyaudio
 import torch
 import pyperclip
+import logging
 from typing import Optional, List
 from dataclasses import dataclass
 from faster_whisper import WhisperModel
+# Configure logging
+# DEBUG for detailed output
+# INFO for normal output
+# ERROR for critical errors
+# WARNING for warnings only
+# CRITICAL for critical errors only
+
+logging.basicConfig(level=logging.CRITICAL,
+                   format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 @dataclass
 class AudioConfig:
@@ -34,7 +45,7 @@ class AudioConfig:
     CHUNK: int = 1024
     FORMAT: int = pyaudio.paFloat32
     SILENCE_THRESHOLD: float = 0.01
-    SILENCE_DURATION: float = 1.0  # seconds
+    SILENCE_DURATION: float = 0.7  # seconds
 
 class SilenceDetector:
     """Adaptive silence detection with dynamic thresholding"""
@@ -83,8 +94,8 @@ class ClipboardManager:
 class WhisperRealtime:
     """Real-time audio transcription using Whisper"""
     
-    def __init__(self, model_size: str = "small", language: str = "pl", 
-                 use_gpu: bool = True):
+    def __init__(self, model_size: str = "small", language: str = "en", 
+                 use_gpu: bool = True, auto_detect: bool = True):
         self.config = AudioConfig()
         self.audio_queue = queue.Queue()
         self.running = False
@@ -92,6 +103,7 @@ class WhisperRealtime:
             threshold=self.config.SILENCE_THRESHOLD
         )
         self.clipboard = ClipboardManager()
+        self.auto_detect = auto_detect
         
         # Initialize Whisper model with float32
         compute_type = "float32"  # Changed from float16 to float32
@@ -107,6 +119,10 @@ class WhisperRealtime:
         self.audio = pyaudio.PyAudio()
         self.stream = None
         self.language = language
+        
+        # Print initial status for Raycast
+        print("🎤 Whisper is ready!")
+        print("Listening for audio...")
 
     def audio_callback(self, in_data, frame_count, time_info, status):
         """Process incoming audio data"""
@@ -137,7 +153,7 @@ class WhisperRealtime:
                     if len(buffer) > 0:
                         segments, _ = self.model.transcribe(
                             buffer,
-                            language=self.language,
+                            language=None if self.auto_detect else self.language,
                             beam_size=5,
                             vad_filter=True,
                             vad_parameters=dict(
@@ -149,7 +165,11 @@ class WhisperRealtime:
                         text = " ".join(segment.text for segment in segments)
                         if text.strip():
                             self.clipboard.update(text)
-                            print(f"Transcribed: {text}")
+                            # Display transcription clearly
+                            print("\n" + "="*50)
+                            print(f"📝 Transcription: {text}")
+                            print("="*50 + "\n")
+                            sys.stdout.flush()
                     
                     # Reset buffer but keep a small overlap
                     buffer = buffer[-int(self.config.RATE * 0.5):] if len(buffer) > 0 else buffer
@@ -158,7 +178,8 @@ class WhisperRealtime:
             except queue.Empty:
                 continue
             except Exception as e:
-                print(f"Error in audio processing: {e}", file=sys.stderr)
+                print(f"❌ Error: {str(e)}", file=sys.stderr)
+                sys.stderr.flush()
 
     def start(self):
         """Start the transcription system"""
@@ -178,8 +199,8 @@ class WhisperRealtime:
         self.process_thread = threading.Thread(target=self.process_audio)
         self.process_thread.start()
         
-        print("Whisper realtime transcription started...")
-        print("Press Ctrl+C to stop")
+        print("Whisper is listening...", flush=True)
+        sys.stdout.flush()
 
     def stop(self):
         """Stop the transcription system"""
@@ -190,29 +211,45 @@ class WhisperRealtime:
             self.stream.stop_stream()
             self.stream.close()
         self.audio.terminate()
-        print("\nTranscription stopped")
+        print("Transcription stopped", flush=True)
+        sys.stdout.flush()
 
 def main():
     """Main entry point"""
     import argparse
     parser = argparse.ArgumentParser(description="Real-time Whisper Transcription")
     parser.add_argument("--model", default="small", help="Whisper model size")
-    parser.add_argument("--language", default="pl", help="Language code")
+    parser.add_argument("--language", default="en", help="Language code (ignored if --auto-detect is used)")
     parser.add_argument("--no-gpu", action="store_true", help="Disable GPU acceleration")
+    parser.add_argument("--auto-detect", action="store_true", help="Enable automatic language detection")
     args = parser.parse_args()
 
-    transcriber = WhisperRealtime(
-        model_size=args.model,
-        language=args.language,
-        use_gpu=not args.no_gpu
-    )
-
     try:
+        logger.info("Starting whisper_realtime.py")
+        logger.info(f"Python version: {sys.version}")
+        logger.info(f"PyAudio version: {pyaudio.__version__}")
+        logger.info(f"Torch version: {torch.__version__}")
+        logger.info(f"CUDA available: {torch.cuda.is_available()}")
+        
+        # Initialize audio
+        logger.info("Initializing PyAudio...")
+        audio = pyaudio.PyAudio()
+        
+        transcriber = WhisperRealtime(
+            model_size=args.model,
+            language=args.language,
+            use_gpu=not args.no_gpu,
+            auto_detect=args.auto_detect
+        )
+
         transcriber.start()
         while True:
             time.sleep(0.1)
     except KeyboardInterrupt:
         transcriber.stop()
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}", exc_info=True)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main() 
