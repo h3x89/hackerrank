@@ -23,9 +23,13 @@ import pyaudio
 import torch
 import pyperclip
 import logging
-from typing import Optional, List
+import gc
+import platform
+import multiprocessing
+from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from faster_whisper import WhisperModel
+
 # Configure logging
 # DEBUG for detailed output
 # INFO for normal output
@@ -33,7 +37,7 @@ from faster_whisper import WhisperModel
 # WARNING for warnings only
 # CRITICAL for critical errors only
 
-logging.basicConfig(level=logging.CRITICAL,
+logging.basicConfig(level=logging.INFO,
                    format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -46,6 +50,8 @@ class AudioConfig:
     FORMAT: int = pyaudio.paFloat32
     SILENCE_THRESHOLD: float = 0.01
     SILENCE_DURATION: float = 0.7  # seconds
+    MAX_BUFFER_SECONDS: int = 30   # Maximum buffer size in seconds
+    MIN_BUFFER_SECONDS: int = 1    # Minimum buffer size in seconds
 
 class SilenceDetector:
     """Adaptive silence detection with dynamic thresholding"""
@@ -95,7 +101,7 @@ class WhisperRealtime:
     """Real-time audio transcription using Whisper"""
     
     def __init__(self, model_size: str = "small", language: str = "en", 
-                 use_gpu: bool = True, auto_detect: bool = True):
+                 use_gpu: bool = True, auto_detect: bool = True, num_workers: int = 4):
         self.config = AudioConfig()
         self.audio_queue = queue.Queue()
         self.running = False
@@ -104,15 +110,23 @@ class WhisperRealtime:
         )
         self.clipboard = ClipboardManager()
         self.auto_detect = auto_detect
+        self.num_workers = num_workers
         
-        # Initialize Whisper model with float32
-        compute_type = "float32"  # Changed from float16 to float32
+        # Determine compute device
         device = "cuda" if use_gpu and torch.cuda.is_available() else "cpu"
+        
+        # Use float32 for better compatibility
+        compute_type = "float32"
+        
+        logger.info(f"Using device: {device}, compute_type: {compute_type}")
+        
+        # Initialize Whisper model
         self.model = WhisperModel(
             model_size,
             device=device,
             compute_type=compute_type,
-            download_root="/tmp/whisper_model"
+            download_root=None,
+            cpu_threads=self.num_workers
         )
         
         # Audio interface
@@ -122,6 +136,7 @@ class WhisperRealtime:
         
         # Print initial status for Raycast
         print("🎤 Whisper is ready!")
+        print(f"Using model: {model_size} on {device} ({compute_type})")
         print("Listening for audio...")
 
     def audio_callback(self, in_data, frame_count, time_info, status):
@@ -151,41 +166,66 @@ class WhisperRealtime:
                     self.config.SILENCE_DURATION) or len(buffer) >= self.config.RATE * 30:
                     
                     if len(buffer) > 0:
-                        segments, _ = self.model.transcribe(
-                            buffer,
-                            language=None if self.auto_detect else self.language,
-                            beam_size=5,
-                            vad_filter=True,
-                            vad_parameters=dict(
-                                min_silence_duration_ms=500,
-                                speech_pad_ms=400
-                            )
-                        )
+                        self._transcribe_audio(buffer)
                         
-                        text = " ".join(segment.text for segment in segments)
-                        if text.strip():
-                            self.clipboard.update(text)
-                            # Display transcription clearly
-                            print("\n" + "="*50)
-                            print(f"📝 Transcription: {text}")
-                            print("="*50 + "\n")
-                            sys.stdout.flush()
-                    
-                    # Reset buffer but keep a small overlap
-                    buffer = buffer[-int(self.config.RATE * 0.5):] if len(buffer) > 0 else buffer
-                    silence_counter = 0
-                
+                        # Reset for next utterance
+                        buffer = np.array([], dtype=np.float32)
+                        silence_counter = 0
+                        
+                        # Free memory
+                        gc.collect()
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+            
             except queue.Empty:
                 continue
             except Exception as e:
-                print(f"❌ Error: {str(e)}", file=sys.stderr)
-                sys.stderr.flush()
+                logger.error(f"Error in audio processing: {str(e)}", exc_info=True)
+                continue
+
+    def _transcribe_audio(self, audio_data):
+        """Transcribe audio data using Whisper"""
+        start_time = time.time()
+        logger.info("Transcribing audio...")
+        
+        try:
+            # Transcribe with standard parameters
+            segments, info = self.model.transcribe(
+                audio_data, 
+                language=self.language if self.language else None,
+                beam_size=4,
+                vad_filter=True,
+                vad_parameters={"threshold": 0.5}
+            )
+            
+            # Process segments
+            transcript = " ".join(segment.text for segment in segments)
+            transcript = transcript.strip()
+            
+            if transcript:
+                self.clipboard.update(transcript)
+                # Formatowanie przyjazne dla Raycast
+                print("\n-----------------------------------------")
+                print(f"Transkrypcja: {transcript}")
+                print("-----------------------------------------")
+                # Dodatkowa informacja o skopiowaniu do schowka
+                print("✅ Tekst został skopiowany do schowka.")
+                # Wymuszenie natychmiastowego pokazania wyjścia
+                sys.stdout.flush()
+            
+            processing_time = time.time() - start_time
+            logger.info(f"Transcription completed in {processing_time:.2f} seconds")
+            
+        except Exception as e:
+            logger.error(f"Transcription error: {e}")
+            # Wyświetl błąd również w standardowym wyjściu dla widoczności w Raycast
+            print(f"❌ Błąd transkrypcji: {e}")
+            sys.stdout.flush()
 
     def start(self):
         """Start the transcription system"""
+        # Start recording
         self.running = True
-        
-        # Start audio stream
         self.stream = self.audio.open(
             format=self.config.FORMAT,
             channels=self.config.CHANNELS,
@@ -197,6 +237,7 @@ class WhisperRealtime:
         
         # Start processing thread
         self.process_thread = threading.Thread(target=self.process_audio)
+        self.process_thread.daemon = True
         self.process_thread.start()
         
         print("Whisper is listening...", flush=True)
@@ -205,8 +246,8 @@ class WhisperRealtime:
     def stop(self):
         """Stop the transcription system"""
         self.running = False
-        if self.process_thread:
-            self.process_thread.join()
+        if hasattr(self, 'process_thread'):
+            self.process_thread.join(timeout=2.0)
         if self.stream:
             self.stream.stop_stream()
             self.stream.close()
@@ -218,35 +259,54 @@ def main():
     """Main entry point"""
     import argparse
     parser = argparse.ArgumentParser(description="Real-time Whisper Transcription")
-    parser.add_argument("--model", default="small", help="Whisper model size")
+    parser.add_argument("--model", default="small", help="Whisper model size (tiny, base, small, medium)")
     parser.add_argument("--language", default="en", help="Language code (ignored if --auto-detect is used)")
     parser.add_argument("--no-gpu", action="store_true", help="Disable GPU acceleration")
     parser.add_argument("--auto-detect", action="store_true", help="Enable automatic language detection")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument("--cpu_threads", type=int, default=4, help="Number of CPU threads to use")
     args = parser.parse_args()
 
+    # Set logging level
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+    
     try:
+        # Log system information
         logger.info("Starting whisper_realtime.py")
         logger.info(f"Python version: {sys.version}")
         logger.info(f"PyAudio version: {pyaudio.__version__}")
         logger.info(f"Torch version: {torch.__version__}")
         logger.info(f"CUDA available: {torch.cuda.is_available()}")
+        logger.info(f"System: {platform.system()} {platform.release()} ({platform.processor()})")
+        logger.info(f"CPU cores: {multiprocessing.cpu_count()}")
         
-        # Initialize audio
-        logger.info("Initializing PyAudio...")
-        audio = pyaudio.PyAudio()
+        # Determine optimal number of workers for CPU
+        num_workers = args.cpu_threads
+        if num_workers <= 0:
+            # Auto-detect: Use N-1 cores on systems with more than 2 cores
+            num_workers = max(1, multiprocessing.cpu_count() - 1)
+            logger.info(f"Auto-detected {num_workers} worker threads for CPU processing")
         
         transcriber = WhisperRealtime(
             model_size=args.model,
             language=args.language,
             use_gpu=not args.no_gpu,
-            auto_detect=args.auto_detect
+            auto_detect=args.auto_detect,
+            num_workers=num_workers
         )
 
         transcriber.start()
-        while True:
-            time.sleep(0.1)
-    except KeyboardInterrupt:
-        transcriber.stop()
+        
+        # Main loop with graceful exit
+        try:
+            while True:
+                time.sleep(0.1)
+        except KeyboardInterrupt:
+            print("\nStopping transcription...")
+        finally:
+            transcriber.stop()
+            
     except Exception as e:
         logger.error(f"Error occurred: {str(e)}", exc_info=True)
         sys.exit(1)
