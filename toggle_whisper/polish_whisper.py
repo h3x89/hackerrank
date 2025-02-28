@@ -119,10 +119,13 @@ class AudioTranscriber:
         self.audio = pyaudio.PyAudio()
         self.stream = None
         
-        # Print initial status for Raycast
-        print("🎤 Polish Whisper is ready!")
+        # Print initial status for Raycast - with immediate flush to ensure visibility
+        print("\n" + "=" * 40)
+        print("🎤 Whisper is ready!")
         print(f"Using model: {model_size} on {self.device}")
         print("Listening for audio...")
+        print("=" * 40 + "\n")
+        sys.stdout.flush()  # Force immediate output for Raycast
 
     def start_recording(self):
         """Start recording audio from the microphone"""
@@ -237,6 +240,10 @@ class AudioTranscriber:
 
 def main():
     """Main function to run the transcriber"""
+    # Print a clear message for Raycast at the very beginning
+    print("\n🔄 Initializing Polish Whisper...\n")
+    sys.stdout.flush()
+    
     parser = argparse.ArgumentParser(description="Real-time audio transcription optimized for Polish using Whisper")
     parser.add_argument("--model", type=str, default="small", choices=["tiny", "base", "small", "medium", "large"],
                         help="Whisper model size (default: small)")
