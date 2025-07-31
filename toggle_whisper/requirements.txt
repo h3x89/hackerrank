@@ -1,6 +1,27 @@
+# Security updates to remediate critical/high CVEs detected by Datadog
+# Updated dependencies to their latest secure versions
+
+# PyTorch - updated to remediate critical CVEs
+torch>=2.7.1
+
+# Core ML/AI dependencies with security fixes
+transformers>=4.47.0
+mlflow>=2.18.0
+setuptools>=75.6.0
+pyarrow>=18.0.0
+ray>=2.40.0
+vllm>=0.6.4
+
+# Image processing with security updates
+pillow>=11.0.0
+keras>=3.7.0
+
+# Development tools with security fixes
+gitpython>=3.1.41
+
+# Existing dependencies maintained at current versions
 faster-whisper>=0.10.0
 numpy>=1.24.0
 pyaudio>=0.2.13
-torch>=2.0.0
 pyperclip>=1.8.2
-insanely-fast-whisper>=0.0.12 
+insanely-fast-whisper>=0.0.12
