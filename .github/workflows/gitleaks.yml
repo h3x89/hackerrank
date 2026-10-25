@@ -4,7 +4,7 @@ on:
   push:
   workflow_dispatch:
   schedule:
-    - cron: "0 2 * * *" # UTC - 4:00 Polish time
+    - cron: "0 12 * * 5" # UTC - 14:00 Polish time
 
 permissions:
   contents: read
